@@ -17,11 +17,21 @@ from datetime import datetime
 from tkinter import *
 from tkinter.ttk import *
 
+routes = []
+
+def select_pattern(event=None):
+    pattern = ''
+    for i in listbox.curselection():
+        pattern = listbox.get(i)
+        pattern = pattern.replace("번째 경로", "")
+    textbox.delete("1.0", END)
+    for text in routes[int(pattern)]:
+        textbox.insert(END, text + '\n')
+
 
 def search():
     start_point = start_point_box.get("1.0", "end")
     destination_point = destination_point_box.get("1.0", "end")
-    print(start_point, destination_point)
 
     driver = webdriver.Chrome("./chromedriver")
     driver.get(full_url)
@@ -42,10 +52,12 @@ def search():
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     elms = soup.find(class_='search_result_list')
 
-    for i in range(len(elms)):
-        listbox.insert(END, f'{i+1}번째 경로')
     for e in elms:
-        print(e.get_text())
+        if e.get_text() != "":
+            routes.append(e.get_text())
+
+    for i in range(len(routes) - 1):
+        listbox.insert(END, f'{i+1}번째 경로')
 
     driver.find_element(By.XPATH,
                         '//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
@@ -72,15 +84,14 @@ def search():
 
     # print(len(driver.find_element(By.CLASS_NAME, "list_path")))
 
-    for i in range(1, 50):
-        name = driver.find_elements(By.XPATH,
-                                    f'//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div[2]/directions-details-result/directions-hover-scroll/div/div[1]/div/div/ul/li[{i}]')
-        if name:
-            for txt in name:
-                textbox.insert(END, txt.text)
-        else:
-            break
-    driver.close()
+    # for i in range(1, 50):
+    #     name = driver.find_elements(By.XPATH,
+    #                                 f'//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div[2]/directions-details-result/directions-hover-scroll/div/div[1]/div/div/ul/li[{i}]')
+    #     if name:
+    #         for txt in name:
+    #             textbox.insert(END, txt.text)
+    #     else:
+    #         break
 
 
 full_url = "https://map.naver.com/v5/directions/"
@@ -103,6 +114,7 @@ search_btn.grid(column=1, row=1)
 
 listbox = Listbox(window, selectmode='single', width=20, height=20)
 listbox.grid(column=1, row=2, columnspan=1)
+listbox.bind('<<ListboxSelect>>', select_pattern)
 
 textbox = Text(window, font='Aria')
 textbox.grid(column=3, row=0, rowspan=3)
@@ -181,4 +193,4 @@ f.close()
 #     time_f_min) + "분")
 
 # 크롭 웹페이지를 닫음
-driver.close()
+
