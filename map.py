@@ -1,7 +1,5 @@
 import pyautogui
-from bs4 import BeautifulSoup
 import requests
-import re
 import csv
 
 from selenium import webdriver
@@ -16,8 +14,11 @@ import re
 from datetime import datetime
 from tkinter import *
 from tkinter.ttk import *
+from datetime import datetime
 
 routes = []
+roads = []
+
 
 def select_pattern(event=None):
     pattern = ''
@@ -25,8 +26,8 @@ def select_pattern(event=None):
         pattern = listbox.get(i)
         pattern = pattern.replace("번째 경로", "")
     textbox.delete("1.0", END)
-    for text in routes[int(pattern)]:
-        textbox.insert(END, text + '\n')
+    for text in roads[int(pattern) - 1]:
+        textbox.insert(END, text)
 
 
 def search():
@@ -50,37 +51,48 @@ def search():
     time.sleep(1)
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
-    elms = soup.find(class_='search_result_list')
-
+    elms = soup.find_all(class_='search_result transit ng-star-inserted')
     for e in elms:
         if e.get_text() != "":
             routes.append(e.get_text())
 
-    for i in range(len(routes) - 1):
-        listbox.insert(END, f'{i+1}번째 경로')
+    listbox.delete(0, "END")
+    for i in range(len(elms) + 1):
+        listbox.insert(END, f'{i + 1}번째 경로')
 
-    driver.find_element(By.XPATH,
-                        '//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
-                        '1]/directions-summary-list/directions-hover-scroll/div/ul/li['
-                        '1]/directions-summary-item-pubtransit/div[2]/div/button').click()
+    current = datetime.now().strftime('%Y-%m-%d, %H:%M 기준')
+    time_label.config(text=current)
+    for i in range(len(elms) + 1):
+        driver.find_element(By.XPATH,
+                            f'//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
+                            f'1]/directions-summary-list/directions-hover-scroll/div/ul/li[{i+1}]/directions-summary-item'
+                            f'-pubtransit/div[2]/div/button').click()
+        time.sleep(3)
+        raw = driver.page_source
+        soup = BeautifulSoup(raw, 'html.parser')
+        elms = soup.find(class_='list_path')
+        text = elms.get_text()
+        text = re.sub("파노라마 보기", "\n", text)
+        text = re.sub("상세정보 거리뷰", "", text)
+        roads.append(text)
+        # elms = soup.find_all(class_='path_name')
+        # for e in elms:
+        #     roads.append(e.get_text())
 
-    time.sleep(3)
-    raw = driver.page_source
-    soup = BeautifulSoup(raw, 'html.parser')
 
+    # bt = driver.find_element(By.XPATH,
+    #                          '//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
+    #                          '2]/directions-details-result/directions-details-summary-pubtransit/div/em')
+    # textbox.insert(END, f"{bt.text} 경로 " + "\n")
+    # # 걸리는 시간 출력
+    # bt = driver.find_element(By.CLASS_NAME, 'summary_duration')
+    # textbox.insert(END, f"걸리는 시간:{bt.text}\n")
+    # textbox.insert(END,
+    #                driver.find_element(By.CLASS_NAME, 'summary_time').text + '\n' + driver.find_element(By.CLASS_NAME,
+    #                                                                                                     'summary_info_detail').text + '\n')
+    # names = driver.find_elements(By.CLASS_NAME, "path_name_text")
+    # elms = driver.find_elements(By.CLASS_NAME, "list_path")
 
-    score_result = soup.find('div', {'class': "sub"})
-
-    bt = driver.find_element(By.XPATH,
-                             '//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
-                             '2]/directions-details-result/directions-details-summary-pubtransit/div/em')
-    textbox.insert(END, f"{bt.text} 경로")
-    # 걸리는 시간 출력
-    bt = driver.find_element(By.CLASS_NAME, 'summary_duration')
-    textbox.insert(END, f"걸리는 시간:{bt.text}")
-    textbox.insert(END, driver.find_element(By.CLASS_NAME, 'summary_time').text + ', ' + driver.find_element(By.CLASS_NAME,
-                                                                                               'summary_info_detail').text)
-    names = driver.find_elements(By.CLASS_NAME, "path_name_text")
 
     # print(len(driver.find_element(By.CLASS_NAME, "list_path")))
 
@@ -98,10 +110,10 @@ full_url = "https://map.naver.com/v5/directions/"
 
 window = Tk()
 
-start_label = Label(window, text="출발지",width=10)
+start_label = Label(window, text="출발지", width=10)
 start_label.grid(column=0, row=0)
 
-destination_label = Label(window, text="목적지",width=10)
+destination_label = Label(window, text="목적지", width=10)
 destination_label.grid(column=2, row=0)
 
 start_point_box = Text(window, width=20, height=3)
@@ -119,6 +131,9 @@ listbox.bind('<<ListboxSelect>>', select_pattern)
 textbox = Text(window, font='Aria')
 textbox.grid(column=3, row=0, rowspan=3)
 
+current_time = datetime.now().strftime('%Y-%m-%d, %H:%M')
+time_label = Label(window, text=current_time, width=20)
+time_label.grid(column=0, row=2)
 
 window.mainloop()
 
@@ -193,4 +208,3 @@ f.close()
 #     time_f_min) + "분")
 
 # 크롭 웹페이지를 닫음
-
