@@ -13,11 +13,13 @@ from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 from tkinter import *
-from tkinter.ttk import *
 from datetime import datetime
+import telegram
 
 routes = []
 roads = []
+token = '5421970300:AAGHJ8Yf0NmQ2CxH24DuKegDzvSk247JgWk'
+sender_id = 5389446647
 
 
 def select_pattern(event=None):
@@ -28,6 +30,19 @@ def select_pattern(event=None):
     textbox.delete("1.0", END)
     for text in roads[int(pattern) - 1]:
         textbox.insert(END, text)
+
+
+def send():
+    bot = telegram.Bot(token)
+    pattern = ''
+    try:
+        for i in listbox.curselection():
+            pattern = listbox.get(i)
+            pattern = pattern.replace("번째 경로", "")
+        text = roads[int(pattern) - 1]
+        bot.sendMessage(chat_id=sender_id, text=text)
+    except:
+        pass
 
 
 def search():
@@ -56,29 +71,52 @@ def search():
         if e.get_text() != "":
             routes.append(e.get_text())
 
-    listbox.delete(0, "END")
+    listbox.delete(0, END)
+    time.sleep(2)
     for i in range(len(elms) + 1):
+        # try:
+        #     optimal = driver.find_element(By.XPATH,
+        #                                   f'//*[@id="container"]/shrinkable-layout/div/directions-layout/directions'
+        #                                   f'-result/div[1]/directions-summary-list/directions-hover-scroll/div/ul/li['
+        #                                   f'{i + 1}]/directions-summary-item-pubtransit/div[1]/em')
+        #     listbox.insert(END, f'{i + 1}번째 경로 -- {optimal.text}')
+        # except:
         listbox.insert(END, f'{i + 1}번째 경로')
 
     current = datetime.now().strftime('%Y-%m-%d, %H:%M 기준')
     time_label.config(text=current)
+    time.sleep(2)
     for i in range(len(elms) + 1):
         driver.find_element(By.XPATH,
                             f'//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
-                            f'1]/directions-summary-list/directions-hover-scroll/div/ul/li[{i+1}]/directions-summary-item'
+                            f'1]/directions-summary-list/directions-hover-scroll/div/ul/li[{i + 1}]/directions-summary-item'
                             f'-pubtransit/div[2]/div/button').click()
+
         time.sleep(3)
         raw = driver.page_source
         soup = BeautifulSoup(raw, 'html.parser')
-        elms = soup.find(class_='list_path')
-        text = elms.get_text()
-        text = re.sub("파노라마 보기", "\n", text)
-        text = re.sub("상세정보 거리뷰", "", text)
+        minute_elms = soup.find_all(class_='icon_transport_text')
+        text_elms = soup.find_all(class_='path_name_text')
+
+        # elms = soup.find(class_='list_path')
+        # text = elms.get_text()
+        # text = re.sub("파노라마 보기", "\n", text)
+        # text = re.sub("상세정보 거리뷰", "", text)
+        # text = re.sub("시간표", "", text)
+        # text = re.sub("빠른환승 *\d-*\d", "", text)
+        # text = re.sub("빠른하차 *\d-*\d", "", text)
+        # text = re.sub("\d\d\d\d\d", "", text)
+        # text = re.sub("이동수단", "", text)
+        text = ''
+        text += '출발 시각: ' + soup.find(class_='departureTime').get_text() + '\n\n'
+        for minute_elm, text_elm in zip(minute_elms, text_elms):
+            text += text_elm.get_text() + ' ' + minute_elm.get_text() + '\n'
+        text += '\n도착 시각: ' + soup.find(class_='arrivalTime').get_text()
+        text = re.sub("이동수단", "도보", text)
         roads.append(text)
         # elms = soup.find_all(class_='path_name')
         # for e in elms:
         #     roads.append(e.get_text())
-
 
     # bt = driver.find_element(By.XPATH,
     #                          '//*[@id="container"]/shrinkable-layout/div/directions-layout/directions-result/div['
@@ -92,7 +130,6 @@ def search():
     #                                                                                                     'summary_info_detail').text + '\n')
     # names = driver.find_elements(By.CLASS_NAME, "path_name_text")
     # elms = driver.find_elements(By.CLASS_NAME, "list_path")
-
 
     # print(len(driver.find_element(By.CLASS_NAME, "list_path")))
 
@@ -123,6 +160,9 @@ destination_point_box.grid(column=2, row=1)
 
 search_btn = Button(window, width=10, text="검색", command=search)
 search_btn.grid(column=1, row=1)
+
+send_btn = Button(window, width=10, height=2, text="텔레그램으로\n 보내기", command=send)
+send_btn.grid(column=2, row=2)
 
 listbox = Listbox(window, selectmode='single', width=20, height=20)
 listbox.grid(column=1, row=2, columnspan=1)
