@@ -1,93 +1,54 @@
-import time
-from selenium.webdriver.common.keys import Keys
-from selenium import webdriver
 import pyautogui
+import requests
+import csv
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+import time
 from bs4 import BeautifulSoup
+import re
 from datetime import datetime
+from tkinter import *
+from datetime import datetime
+import telegram
 
-try:
-    start = "논현역"
-    finish = "논현고"
-    data = []
+current_day = datetime.now().strftime('%Y-%m-%d')
 
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('lang=ko_KR')
+start = "정왕역"
+end = "사당역"
+driver = webdriver.Chrome("./chromedriver")
+driver.get('https://www.weather.go.kr/w/weather/forecast/short-term.do')
 
-    driver = webdriver.Chrome('C:\chromedriver.exe', chrome_options=chrome_options)
+driver.implicitly_wait(10)
+driver.find_element(By.XPATH, '//*[@id="index-local-search"]/div[1]/div/input').send_keys(start)
+time.sleep(2)
+driver.find_element(By.XPATH, '//*[@id="index-local-search"]/div[2]/ul/li[1]').click()
+time.sleep(5)
 
-    driver.get('https://map.naver.com/v5/directions/-/-/-/mode?c=14107103.1786139,4494701.9630842,15,0,0,0,dh')
-    delay = 3
-    driver.implicitly_wait(delay)
-    driver.find_element_by_xpath('//*[@id="intro_popup_close"]/span').click()
-    driver.implicitly_wait(5)
-    driver.find_element_by_xpath(
-        '//*[@id="container"]/div[1]/shrinkable-layout/directions-layout/directions-result/div[1]/ul/li[3]/a').click()
-    driver.implicitly_wait(5)
-    el = driver.find_element_by_id('directionStart')
-    el.send_keys(start)
-    time.sleep(0.02)
-    el.send_keys(Keys.ENTER)
-    time.sleep(0.2)
-    al = driver.find_element_by_id('directionGoal')
-    al.send_keys(finish)
-    time.sleep(0.02)
-    al.send_keys(Keys.ENTER)
-    time.sleep(0.2)
-    driver.find_element_by_xpath(
-        '//*[@id="container"]/div[1]/shrinkable-layout/directions-layout/directions-result/div[1]/directions-search/div[2]/button[3]').click()
-    time.sleep(0.3)
-    html = driver.page_source
-    soup = BeautifulSoup(html, 'html.parser')
+soup = BeautifulSoup(driver.page_source, 'html.parser')
+elms = soup.find(class_="slide")
+for e in elms:
+    print(e.get_text())
 
-    score_result = soup.find('div', {'class': 'summary_box'})
-    score_result = str(score_result)
-    times, length = score_result.split("추천", 1)
+driver.find_element(By.XPATH, '//*[@id="index-local-search"]/div[1]/div/input').send_keys(end)
+time.sleep(2)
+driver.find_element(By.XPATH, '//*[@id="index-local-search"]/div[2]/ul/li[1]').click()
+time.sleep(5)
 
-    times = times.split(">", 2)
-    times = times[2]
-    times = times.split("<", 1)
-    times = times[0]
+soup = BeautifulSoup(driver.page_source, 'html.parser')
+elms = soup.find(class_="slide")
+for e in elms:
+    print(e.get_text())
 
-    length = length.split(">", 4)
-    length = length[4]
-    length = length.split("<", 1)
 
-    length = length[0]
-    times_ff = times
-    driver.quit()
 
-    now_hour = datetime.today().strftime("%H")
-    now_min = datetime.today().strftime("%M")
 
-    now_time = int(now_hour) * 60 + int(now_min)
-    if '시간' in times:
-        times = times.split("시간", 1)
-        times_hour = times[0]
-        times_hour = times_hour.replace("시간", "")
-        times_min = times[1]
-        times_min = times_min.replace(" ", "")
-        times_min = times_min.replace("분", "")
-    else:
-        times = times.replace(" ", "")
-        times_min = times.replace("분", "")
-        times_hour = '0'
 
-    times_hour = str(times_hour)
-    times_min = str(times_min)
 
-    times_f = int(times_hour) * 60 + int(times_min)
 
-    time_sum = times_f + now_time
 
-    time_f_hour = int(time_sum / 60)
-    time_f_min = time_sum % 60
 
-    if time_f_hour >= 24:
-        time_f_hour = time_f_hour - 24
-
-    print("거리 : " + length + "   /   예상소요시간 : " + times_ff + "   /   현재출발시 예상도착시간 : " + str(time_f_hour) + "시 " + str(
-        time_f_min) + "분")
-except:
-    print("해당 위치 사이의 거리가 50km를 초과한 경우 도보 이동거리를 제공할 수 없습니다.")
